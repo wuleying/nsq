@@ -19,7 +19,9 @@ import (
 )
 
 type program struct {
+	// 确保实例化对象Do方法在多线程环境只运行一次,内部通过互斥锁实现
 	once sync.Once
+	// nsqd节点
 	nsqd *nsqd.NSQD
 }
 
