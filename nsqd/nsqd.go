@@ -346,7 +346,7 @@ func (n *NSQD) LoadMetadata() error {
 		}
 		topic := n.GetTopic(t.Name)
 		if t.Paused {
-			topic.Pause()
+			_ = topic.Pause()
 		}
 		for _, c := range t.Channels {
 			if !protocol.IsValidChannelName(c.Name) {
@@ -355,7 +355,7 @@ func (n *NSQD) LoadMetadata() error {
 			}
 			channel := topic.GetChannel(c.Name)
 			if c.Paused {
-				channel.Pause()
+				_ = channel.Pause()
 			}
 		}
 		topic.Start()
@@ -370,7 +370,7 @@ func (n *NSQD) PersistMetadata() error {
 	n.logf(LOG_INFO, "NSQ: persisting topic/channel metadata to %s", fileName)
 
 	js := make(map[string]interface{})
-	topics := []interface{}{}
+	var topics []interface{}
 	for _, topic := range n.topicMap {
 		if topic.ephemeral {
 			continue
@@ -378,7 +378,7 @@ func (n *NSQD) PersistMetadata() error {
 		topicData := make(map[string]interface{})
 		topicData["name"] = topic.name
 		topicData["paused"] = topic.IsPaused()
-		channels := []interface{}{}
+		var channels []interface{}
 		topic.Lock()
 		for _, channel := range topic.channelMap {
 			channel.Lock()

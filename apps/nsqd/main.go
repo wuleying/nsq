@@ -19,7 +19,7 @@ import (
 )
 
 type program struct {
-	// 确保实例化对象Do方法在多线程环境只运行一次,内部通过互斥锁实现
+	// 确保实例化对象Do方法在多线程环境只运行一次，内部通过互斥锁实现
 	once sync.Once
 	// nsqd节点
 	nsqd *nsqd.NSQD
@@ -41,18 +41,22 @@ func (p *program) Init(env svc.Environment) error {
 }
 
 func (p *program) Start() error {
+	// 初始化参数
 	opts := nsqd.NewOptions()
 
 	flagSet := nsqdFlagSet(opts)
-	flagSet.Parse(os.Args[1:])
+	_ = flagSet.Parse(os.Args[1:])
 
+	// 设置随机种子
 	rand.Seed(time.Now().UTC().UnixNano())
 
+	// 输出nsqd版本信息
 	if flagSet.Lookup("version").Value.(flag.Getter).Get().(bool) {
 		fmt.Println(version.String("nsqd"))
 		os.Exit(0)
 	}
 
+	// 配置文件路径
 	var cfg config
 	configFile := flagSet.Lookup("config").Value.String()
 	if configFile != "" {
@@ -61,28 +65,36 @@ func (p *program) Start() error {
 			logFatal("failed to load config file %s - %s", configFile, err)
 		}
 	}
+	// 验证配置项
 	cfg.Validate()
 
 	options.Resolve(opts, flagSet, cfg)
+
+	// 创建nsqd实例
 	nsqd, err := nsqd.New(opts)
 	if err != nil {
 		logFatal("failed to instantiate nsqd - %s", err)
 	}
 	p.nsqd = nsqd
 
+	// 加载metadata数据 metadata中存储了topic和channel信息
 	err = p.nsqd.LoadMetadata()
 	if err != nil {
 		logFatal("failed to load metadata - %s", err)
 	}
+
+	// 保证重启时能保留topic与channel数据
 	err = p.nsqd.PersistMetadata()
 	if err != nil {
 		logFatal("failed to persist metadata - %s", err)
 	}
 
 	go func() {
+		// 启动nsqd服务
 		err := p.nsqd.Main()
 		if err != nil {
-			p.Stop()
+			// 发生错误，终止服务
+			_ = p.Stop()
 			os.Exit(1)
 		}
 	}()
@@ -90,6 +102,7 @@ func (p *program) Start() error {
 	return nil
 }
 
+// 终止nsqd服务
 func (p *program) Stop() error {
 	p.once.Do(func() {
 		p.nsqd.Exit()

@@ -121,7 +121,7 @@ func (t *Topic) getOrCreateChannel(channelName string) (*Channel, bool) {
 	channel, ok := t.channelMap[channelName]
 	if !ok {
 		deleteCallback := func(c *Channel) {
-			t.DeleteExistingChannel(c.name)
+			_ = t.DeleteExistingChannel(c.name)
 		}
 		channel = NewChannel(t.name, channelName, t.ctx, deleteCallback)
 		t.channelMap[channelName] = channel
@@ -158,7 +158,7 @@ func (t *Topic) DeleteExistingChannel(channelName string) error {
 
 	// delete empties the channel before closing
 	// (so that we dont leave any messages around)
-	channel.Delete()
+	_ = channel.Delete()
 
 	// update messagePump state
 	select {
