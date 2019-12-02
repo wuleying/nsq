@@ -369,12 +369,12 @@ func (t *Topic) exit(deleted bool) error {
 		t.Lock()
 		for _, channel := range t.channelMap {
 			delete(t.channelMap, channel.name)
-			channel.Delete()
+			_ = channel.Delete()
 		}
 		t.Unlock()
 
 		// empty the queue (deletes the backend files, too)
-		t.Empty()
+		_ = t.Empty()
 		return t.backend.Delete()
 	}
 
@@ -388,7 +388,7 @@ func (t *Topic) exit(deleted bool) error {
 	}
 
 	// write anything leftover to disk
-	t.flush()
+	_ = t.flush()
 	return t.backend.Close()
 }
 

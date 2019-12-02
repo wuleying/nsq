@@ -105,6 +105,7 @@ func (p *program) Start() error {
 // 终止nsqd服务
 func (p *program) Stop() error {
 	p.once.Do(func() {
+		// 终止nsqd服务
 		p.nsqd.Exit()
 	})
 	return nil

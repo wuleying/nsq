@@ -45,27 +45,42 @@ type NSQD struct {
 	// 64bit atomic vars need to be first for proper alignment on 32bit platforms
 	clientIDSequence int64
 
+	// 读写互斥锁
 	sync.RWMutex
 
+	// 原子性的存储配置项(Store and Load)
 	opts atomic.Value
 
+	// 目录锁
 	dl        *dirlock.DirLock
+	// 数据加载标记位
 	isLoading int32
+	// 错误信息
 	errValue  atomic.Value
+	// 开始时间
 	startTime time.Time
 
+	// topic map表
 	topicMap map[string]*Topic
 
+	// 客户端读写互斥锁
 	clientLock sync.RWMutex
+	// 客户端map表
 	clients    map[int64]Client
 
+	// todo
 	lookupPeers atomic.Value
 
+	// 侦听tcp协议
 	tcpListener   net.Listener
+	// 侦听http协议
 	httpListener  net.Listener
+	// 侦听https协议
 	httpsListener net.Listener
+	// tls(transport layer security 传输层安全协议)配置项
 	tlsConfig     *tls.Config
 
+	// todo
 	poolSize int
 
 	notifyChan           chan interface{}
@@ -420,6 +435,7 @@ func (n *NSQD) PersistMetadata() error {
 }
 
 func (n *NSQD) Exit() {
+	// 停止TCP侦听
 	if n.tcpListener != nil {
 		n.tcpListener.Close()
 	}
@@ -534,7 +550,7 @@ func (n *NSQD) DeleteExistingTopic(topicName string) error {
 	// we do this before removing the topic from map below (with no lock)
 	// so that any incoming writes will error and not create a new topic
 	// to enforce ordering
-	topic.Delete()
+	_ = topic.Delete()
 
 	n.Lock()
 	delete(n.topicMap, topicName)
