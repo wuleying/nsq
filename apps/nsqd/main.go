@@ -32,6 +32,7 @@ func main() {
 	}
 }
 
+// 初始化操作
 func (p *program) Init(env svc.Environment) error {
 	if env.IsWindowsService() {
 		dir := filepath.Dir(os.Args[0])
@@ -40,6 +41,7 @@ func (p *program) Init(env svc.Environment) error {
 	return nil
 }
 
+// 启动nsqd服务
 func (p *program) Start() error {
 	// 初始化参数
 	opts := nsqd.NewOptions()

@@ -14,25 +14,40 @@ import (
 
 type Options struct {
 	// basic options
+	// nsqd节点id
 	ID        int64       `flag:"node-id" cfg:"id"`
+	// 日志等级
 	LogLevel  lg.LogLevel `flag:"log-level"`
+	// 日志前缀
 	LogPrefix string      `flag:"log-prefix"`
+	// log处理器
 	Logger    Logger
 
+	// TCP地址
 	TCPAddress               string        `flag:"tcp-address"`
+	// HTTP地址
 	HTTPAddress              string        `flag:"http-address"`
+	// HTTPS地址
 	HTTPSAddress             string        `flag:"https-address"`
+	// 广播地址
 	BroadcastAddress         string        `flag:"broadcast-address"`
+	// nsq网络拓扑管理服务TCP地址
 	NSQLookupdTCPAddresses   []string      `flag:"lookupd-tcp-address" cfg:"nsqlookupd_tcp_addresses"`
+	// auth认证服务HTTP地址
 	AuthHTTPAddresses        []string      `flag:"auth-http-address" cfg:"auth_http_addresses"`
+	// HTTP客户端连接超时时间
 	HTTPClientConnectTimeout time.Duration `flag:"http-client-connect-timeout" cfg:"http_client_connect_timeout"`
+	// HTTP客户端请求超时时间
 	HTTPClientRequestTimeout time.Duration `flag:"http-client-request-timeout" cfg:"http_client_request_timeout"`
 
 	// diskqueue options
+	// 数据文件存储路径
 	DataPath        string        `flag:"data-path"`
+	// 内存队列大小
 	MemQueueSize    int64         `flag:"mem-queue-size"`
 	MaxBytesPerFile int64         `flag:"max-bytes-per-file"`
 	SyncEvery       int64         `flag:"sync-every"`
+	// 同步超时时间
 	SyncTimeout     time.Duration `flag:"sync-timeout"`
 
 	QueueScanInterval        time.Duration
@@ -78,8 +93,11 @@ type Options struct {
 	TLSMinVersion       uint16 `flag:"tls-min-version"`
 
 	// compression
+	// 是否启用deflate压缩
 	DeflateEnabled  bool `flag:"deflate"`
+	// deflate压缩等级[1-9]
 	MaxDeflateLevel int  `flag:"max-deflate-level"`
+	// 是否启用snappy压缩
 	SnappyEnabled   bool `flag:"snappy"`
 }
 

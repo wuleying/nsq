@@ -68,7 +68,7 @@ type NSQD struct {
 	// 客户端map表
 	clients    map[int64]Client
 
-	// todo
+	// lookupd负责管理拓扑信息
 	lookupPeers atomic.Value
 
 	// 侦听tcp协议
@@ -80,7 +80,7 @@ type NSQD struct {
 	// tls(transport layer security 传输层安全协议)配置项
 	tlsConfig     *tls.Config
 
-	// todo
+	// 协程池大小
 	poolSize int
 
 	notifyChan           chan interface{}
@@ -94,15 +94,20 @@ type NSQD struct {
 func New(opts *Options) (*NSQD, error) {
 	var err error
 
+	// 数据文件路径
 	dataPath := opts.DataPath
 	if opts.DataPath == "" {
+		// 未设置数据文件路径，缺省将数据文件存储到当前目录
 		cwd, _ := os.Getwd()
 		dataPath = cwd
 	}
+
+	// Logger方法
 	if opts.Logger == nil {
 		opts.Logger = log.New(os.Stderr, opts.LogPrefix, log.Ldate|log.Ltime|log.Lmicroseconds)
 	}
 
+	// 初始化nsqd对象
 	n := &NSQD{
 		startTime:            time.Now(),
 		topicMap:             make(map[string]*Topic),
@@ -112,6 +117,8 @@ func New(opts *Options) (*NSQD, error) {
 		optsNotificationChan: make(chan struct{}, 1),
 		dl:                   dirlock.New(dataPath),
 	}
+
+	// http客户端
 	httpcli := http_api.NewClient(nil, opts.HTTPClientConnectTimeout, opts.HTTPClientRequestTimeout)
 	n.ci = clusterinfo.New(n.logf, httpcli)
 
@@ -120,15 +127,18 @@ func New(opts *Options) (*NSQD, error) {
 	n.swapOpts(opts)
 	n.errValue.Store(errStore{})
 
+	// 数据文件加锁
 	err = n.dl.Lock()
 	if err != nil {
 		return nil, fmt.Errorf("--data-path=%s in use (possibly by another instance of nsqd)", dataPath)
 	}
 
+	// deflate压缩算法等级[1-9] (deflate是同时使用了LZ77算法与哈夫曼编码Huffman Coding的一个无损数据压缩算法)
 	if opts.MaxDeflateLevel < 1 || opts.MaxDeflateLevel > 9 {
 		return nil, errors.New("--max-deflate-level must be [1,9]")
 	}
 
+	// nsqd节点id[0-1023]
 	if opts.ID < 0 || opts.ID >= 1024 {
 		return nil, errors.New("--node-id must be [0,1024)")
 	}
@@ -151,6 +161,7 @@ func New(opts *Options) (*NSQD, error) {
 		opts.TLSRequired = TLSRequired
 	}
 
+	// TLS配置
 	tlsConfig, err := buildTLSConfig(opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build TLS config - %s", err)
@@ -169,14 +180,19 @@ func New(opts *Options) (*NSQD, error) {
 	n.logf(LOG_INFO, version.String("nsqd"))
 	n.logf(LOG_INFO, "ID: %d", opts.ID)
 
+	// 侦听TCP协议端口
 	n.tcpListener, err = net.Listen("tcp", opts.TCPAddress)
 	if err != nil {
 		return nil, fmt.Errorf("listen (%s) failed - %s", opts.TCPAddress, err)
 	}
+
+	// 侦听HTTP协议端口
 	n.httpListener, err = net.Listen("tcp", opts.HTTPAddress)
 	if err != nil {
 		return nil, fmt.Errorf("listen (%s) failed - %s", opts.HTTPAddress, err)
 	}
+
+	// 侦听HTTPS协议端口
 	if n.tlsConfig != nil && opts.HTTPSAddress != "" {
 		n.httpsListener, err = tls.Listen("tcp", opts.HTTPSAddress, n.tlsConfig)
 		if err != nil {
@@ -257,6 +273,7 @@ func (n *NSQD) RemoveClient(clientID int64) {
 }
 
 func (n *NSQD) Main() error {
+	// 上下文对象，传递nsqd实例
 	ctx := &context{n}
 
 	exitCh := make(chan error)
@@ -330,7 +347,7 @@ func writeSyncFile(fn string, data []byte) error {
 	if err == nil {
 		err = f.Sync()
 	}
-	f.Close()
+	_ = f.Close()
 	return err
 }
 
@@ -437,15 +454,15 @@ func (n *NSQD) PersistMetadata() error {
 func (n *NSQD) Exit() {
 	// 停止TCP侦听
 	if n.tcpListener != nil {
-		n.tcpListener.Close()
+		_ = n.tcpListener.Close()
 	}
 
 	if n.httpListener != nil {
-		n.httpListener.Close()
+		_ = n.httpListener.Close()
 	}
 
 	if n.httpsListener != nil {
-		n.httpsListener.Close()
+		_ = n.httpsListener.Close()
 	}
 
 	n.Lock()
@@ -455,14 +472,14 @@ func (n *NSQD) Exit() {
 	}
 	n.logf(LOG_INFO, "NSQ: closing topics")
 	for _, topic := range n.topicMap {
-		topic.Close()
+		_ = topic.Close()
 	}
 	n.Unlock()
 
 	n.logf(LOG_INFO, "NSQ: stopping subsystems")
 	close(n.exitChan)
 	n.waitGroup.Wait()
-	n.dl.Unlock()
+	_ = n.dl.Unlock()
 	n.logf(LOG_INFO, "NSQ: bye")
 }
 
@@ -485,7 +502,7 @@ func (n *NSQD) GetTopic(topicName string) *Topic {
 		return t
 	}
 	deleteCallback := func(t *Topic) {
-		n.DeleteExistingTopic(t.name)
+		_ = n.DeleteExistingTopic(t.name)
 	}
 	t = NewTopic(topicName, &context{n}, deleteCallback)
 	n.topicMap[topicName] = t
